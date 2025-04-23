@@ -1,4 +1,4 @@
-# 🚀 Algorithmic Trading using DDDQN (Dueling Double Deep Q-Network)
+#  Algorithmic Trading using DDDQN (Dueling Double Deep Q-Network)
 
 <div align="center">
 
@@ -23,7 +23,7 @@ This project implements a **Dueling Double Deep Q-Network (DDDQN)** for algorith
 - **Experience Replay**: Learns from past experiences more efficiently
 - **Target Networks**: Provides stable learning targets
 
-## ✨ Features
+##  Features
 
 ###  **Intelligent Trading Agent**
 - Advanced DDDQN architecture for optimal decision making
@@ -95,7 +95,7 @@ pip install -r requirements.txt
 The core of this project is the **Dueling Double Deep Q-Network (DDDQN)**. This architecture enhances the standard Deep Q-Network (DQN) by:
 
 1.  **Dueling Network Structure**:
-    * It features two separate streams within the neural network: one for estimating the **state value function ($V(s)$)** and another for estimating the **action advantage function ($A(s, a)$)**.
+    * It features two separate streams within the neural network: one for estimating the **state value function (V(s))** and another for estimating the **action advantage function (A(s, a))**.
     * The state value ($V(s)$) represents how good it is to be in a particular state.
     * The advantage ($A(s,a)$) represents how much better taking a specific action ($a$) is compared to other actions in state ($s$).
     * These are combined to get the final Q-values: $Q(s, a) = V(s) + (A(s, a) - \text{mean}(A(s, \cdot)))$.
