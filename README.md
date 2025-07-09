@@ -1,4 +1,4 @@
-#  Algorithmic Trading using DDDQN (Dueling Double Deep Q-Network)
+#  Algorithmic Trading using DDDQN (Dueling Double Deep Q-Network) with Prioritized Replay
 
 <div align="center">
 
@@ -57,8 +57,8 @@ pip install -r requirements.txt
 ```
  Algorithmic-Trading-using-DeepRL/
 ├── DDDQN/
-│   ├── agent.py              # DDDQN agent implementation
-│   ├── environment.py        # Trading environment
+│   ├── agent.py              # DDDQN agent implementations
+│   ├── environment.py        # Trading environments
 │   ├── main.py              # Main training/testing script
 │   ├── preprocessing.py      # Data preprocessing utilities
 │   └── notebook.ipynb       # Analysis and visualization
@@ -115,11 +115,21 @@ The core of this project is the **Dueling Double Deep Q-Network (DDDQN)**. This 
 4.  **Target Networks**:
     * A separate target network (a periodically updated copy of the online network) is used to generate the target Q-values for the Bellman equation.
 
+5. **Bidirectional LSTM Q-Network(*)**  
+   - Replaces the plain feed‑forward backbone with a BiLSTM layer (or stack of layers) to capture temporal dependencies in price series.  
+   - The sequence of last few days' indicators are processed forward and backward, then merged and fed into the dueling streams.  
+   - Enables the agent to better infer patterns and trends over time.
+   
+6. **Prioritized Experience Replay(*)**  
+   - Instead of uniform sampling, transitions are sampled with probability proportional to their temporal‑difference (TD) error \(\delta\).  
+   - Higher‑error transitions are replayed more often, focusing learning on surprising or under‑learned experiences.  
+   - Importance‑sampling weights correct for the introduced bias, ensuring convergence.
 
+ (*) Currenlty implemented only for the DayTrading Environment
 
 ###  Trading Performance
 
-The DDDQN agent demonstrates strong performance on Bitcoin trading:
+The base DDDQN agent demonstrates strong performance on Position Aware Bitcoin trading Environment:
 
 | Metric | Performance |
 |--------|-------------|
@@ -133,7 +143,7 @@ The DDDQN agent demonstrates strong performance on Bitcoin trading:
 - **Reduced Overestimation**: Double Q-learning prevents Q-value inflation
 - **Better Value Estimation**: Dueling architecture improves state value assessment  
 - **Stable Learning**: Target networks provide consistent learning targets
-- **Sample Efficiency**: Experience replay maximizes data utilization
+- **Sample Efficiency**: Experience replay maximizes data utilization, Prioritized Replay Memory further selects the best yeilding data points, speeding up convergence
 
 ## Data
 
@@ -141,5 +151,13 @@ The project uses historical Bitcoin data (`bitcoin_2020_2025.csv`) containing:
 - **Timestamp**: Date and time information
 - **OHLCV**: Open, High, Low, Close, Volume data
 - **Period**: 2020-2025 market data for training and testing
+
+## Newer Additions
+
+- **Day Trading environment**: A new trading enviroment with only 2 options of buy/sell, for each day was added.
+- **Prioritized Replay Memory**: The base Agent modified with PRM is available as DDDQNTrainer_PrioritizedReplay
+- **Bi-LSTM**: The base agent with PRM was modified with a more robust network architecture of BiLSTM available as DDDQNTrainer_PrioritizedReplay_BiLSTM
+
+
 
 </div>
