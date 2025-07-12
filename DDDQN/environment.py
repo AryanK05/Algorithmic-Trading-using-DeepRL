@@ -131,8 +131,10 @@ class DayTradingEnv:
       - total_profit: cumulative sum of profits
       - confusion_matrix: 2x2 matrix for actions taken vs optimal actions
     """
-    def __init__(self, df: pd.DataFrame, non_normal_df: pd.DataFrame, history_length: int = 90, observation_dim='1D'):
-        # Original data frame
+    def __init__(self, df: pd.DataFrame, non_normal_df: pd.DataFrame, history_length: int = 90, observation_dim='1D'): 
+        # observation dim should be 2D while using the BiLSTM trainer
+        
+        
         self.raw_df = df.reset_index(drop=True)
         self.history_length = history_length
         self.n_steps = len(self.raw_df)

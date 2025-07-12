@@ -86,3 +86,67 @@ def visualize_data(df):
     plt.tight_layout()
     plt.show()
 
+
+
+def preprocess_data_mark2(df):
+    """
+    Args:
+        df: DataFrame with OHLCV data
+
+    Returns:
+        DataFrame with preprocessed data including technical indicators
+        normalizing everything last
+    """
+    # Handle missing values
+    if df.isnull().sum().sum() > 0:
+        print(f"Warning: Initial missing values found: {df.isnull().sum().sum()}")
+        df = df.ffill()  # Forward fill
+        df = df.bfill()  # Backward fill for any remaining NAs
+    else:
+        print("No missing values found, skipping fill operations.")
+    df = df.drop(columns = ['Date'])
+    # Simple Moving Averages
+    df['SMA7'] = df['Close'].rolling(window=7).mean()  # 7-day SMA
+    df['SMA25'] = df['Close'].rolling(window=25).mean() # 25-day SMA
+
+    # MACD
+    df['EMA12'] = df['Close'].ewm(span=12).mean() # 12-day EMA
+    df['EMA26'] = df['Close'].ewm(span=26).mean() # 26-day EMA
+    df['MACD'] = df['EMA12'] - df['EMA26']
+    df['Signal'] = df['MACD'].ewm(span=9).mean()   # 9-day EMA of MACD
+    delta = df['Close'].diff()
+    gain = delta.where(delta > 0, 0).rolling(window=14).mean() # 14-day gain
+    loss = -delta.where(delta < 0, 0).rolling(window=14).mean() # 14-day loss
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    df['Daily_Return'] = df['Close'].pct_change()
+
+    df['Norm_Close'] = df['Close'] / df['Close'].iloc[0]
+
+
+    df.dropna(inplace=True)
+
+    non_scaled_df = df.copy()
+
+
+
+    scaler_price = RobustScaler()
+    scaler_indicators = RobustScaler()
+
+    price_cols = ['Open','High','Low','Close']
+    all_prices = df[price_cols].values.reshape(-1, 1)
+    scaler_price.fit(all_prices)
+    for col in price_cols:
+        df[col] = scaler_price.transform(df[[col]])
+
+
+    non_price_columns = list(df.drop(columns=price_cols).columns)
+    scaler_indicators.fit(df.drop(columns=price_cols))
+    df[non_price_columns] = scaler_indicators.transform(df.drop(columns=price_cols))
+    # print(array[:5])
+
+
+    print(scaler_price.center_, scaler_price.scale_)
+    # print(scaler_indicators.center_, scaler_indicators.scale_)
+
+    return df, non_scaled_df

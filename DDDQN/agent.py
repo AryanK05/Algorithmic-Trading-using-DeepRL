@@ -291,7 +291,7 @@ class DDDQNTrainer_PrioritizedReplay:
                  batch_size=64, train_freq=10, train_times = 5, update_q_freq=20,
                  epsilon_start=1.0, epsilon_min=0.1,
                  epsilon_decay=0.95, start_reduce_epsilon=5,
-                 epoch_num=60):
+                 epoch_num=100):
         self.env = env
         self.hidden_size = hidden_size
         self.gamma = gamma
@@ -337,7 +337,7 @@ class DDDQNTrainer_PrioritizedReplay:
 
             while not done and step < step_max:
                 # select action
-                if np.random.rand() < epsilon:
+                if np.random.rand() < self.epsilon:
                     action = np.random.randint(self.action_dim)
                 else:
                     state_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
@@ -357,9 +357,9 @@ class DDDQNTrainer_PrioritizedReplay:
                 self.memory.add((obs, action, reward, next_obs, done))
         
                 
-                if self.memory.is_min_len_reached() and total_step % self.train_freq == 0:
+                if self.memory.is_min_len_reached() and self.total_step % self.train_freq == 0:
                     for i in range(self.train_times):
-                        transition, indices, is_weights = self.memory.sample(self.batch_size, 0.7, 1-epsilon)
+                        transition, indices, is_weights = self.memory.sample(self.batch_size, 0.7, 1-self.epsilon)
                         
                         bs, ba, br, bnext, bd = zip(*transition)
                         
@@ -405,24 +405,26 @@ class DDDQNTrainer_PrioritizedReplay:
                         #     print(f"env_step: {getattr(self.env, 'current_step', 0)}  reward: {reward}    loss: {loss.item()}")
 
                 # update target network
-                if total_step % self.update_q_freq == 0:
+                if self.total_step % self.update_q_freq == 0:
                     self.Q_target.load_state_dict(self.Q.state_dict())
 
                 # epsilon decay
-                if total_step > self.start_reduce_epsilon:
-                    epsilon = max(self.epsilon_min, epsilon - self.epsilon_decay)
+                if self.total_step > self.start_reduce_epsilon:
+                    self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay)
                 
                 obs = next_obs
                 total_reward += reward
                 step += 1
-                total_step += 1
+                self.total_step += 1
 
             # end of episode logging
             self.total_rewards.append(total_reward)
             self.total_losses.append(total_loss)
+            self.total_profits.append(getattr(self.env, 'total_profit', 0))
             # episode return == total_reward, profit info in env.profits
-            print(f"Epoch {epoch+1:3d} | Epsilon {epsilon:.3f} | Steps {total_step:5d} | Return {total_reward:.4f} | Loss {total_loss:.4f} | Profit {getattr(env, 'total_profit', 0):.4f}")
-            print(self.env.render_confusion_matrix())
+            print(f"Epoch {epoch+1:3d} | Epsilon {self.epsilon:.3f} | Steps {self.total_step:5d} | Return {total_reward:.4f} | Loss {total_loss:.4f} | Profit {getattr(self.env, 'total_profit', 0):.4f}")
+            if hasattr(self.env, "render_confusion_matrix"):
+                self.env.render_confusion_matrix()
             
 
             # periodic summary every 5 episodes
@@ -461,6 +463,8 @@ class DDDQNTrainer_PrioritizedReplay:
         total_profit = getattr(test_env, 'profits', 0)
 
         print(f"Test completed | Total Reward: {total_reward:.4f} | Total Profit: {total_profit:.4f}")
+        if hasattr(test_env, "render_confusion_matrix"):
+                test_env.render_confusion_matrix()
         return total_reward, total_profit, actions
 
 
@@ -500,7 +504,7 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
 
     Please instantiate the Day trading env with observation_dim argument as '2D' for this network
     '''
-    def build_mlp(input_dim, hidden_dims, activation=nn.ReLU):
+    def build_mlp(self, input_dim, hidden_dims, activation=nn.ReLU):
         layers = []
         last_dim = input_dim
         for h in hidden_dims:
@@ -671,8 +675,8 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
         self.Q = self.DuelingBiLSTM(single_day_dim= self.input_dim[1], 
                                     look_back_window= self.input_dim[0], 
                                     action_space_dim= self.action_dim, 
-                                    rnn_hidden_space= self.rnn_hidden_size, 
-                                    fc_hidden_space= self.fcc_hidden_size).to(self.device)
+                                    rnn_hidden_space= (self.rnn_hidden_size,), 
+                                    fc_hidden_space= (self.fcc_hidden_size,)).to(self.device)
         self.Q_target = copy.deepcopy(self.Q).to(self.device)
         self.optimizer = optim.Adam(self.Q.parameters())
         
@@ -699,7 +703,7 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
 
             while not done and step < step_max:
                 # select action
-                if np.random.rand() < epsilon:
+                if np.random.rand() < self.epsilon:
                     action = np.random.randint(self.action_dim)
                 else:
                     state_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
@@ -719,9 +723,9 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
                 self.memory.add((obs, action, reward, next_obs, done))
         
                 
-                if self.memory.is_min_len_reached() and total_step % self.train_freq == 0:
+                if self.memory.is_min_len_reached() and self.total_step % self.train_freq == 0:
                     for i in range(self.train_times):
-                        transition, indices, is_weights = self.memory.sample(self.batch_size, 0.7, 1-epsilon)
+                        transition, indices, is_weights = self.memory.sample(self.batch_size, 0.7, 1-self.epsilon)
                         
                         bs, ba, br, bnext, bd = zip(*transition)
                         
@@ -767,24 +771,26 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
                         #     print(f"env_step: {getattr(self.env, 'current_step', 0)}  reward: {reward}    loss: {loss.item()}")
 
                 # update target network
-                if total_step % self.update_q_freq == 0:
+                if self.total_step % self.update_q_freq == 0:
                     self.Q_target.load_state_dict(self.Q.state_dict())
 
                 # epsilon decay
-                if total_step > self.start_reduce_epsilon:
-                    epsilon = max(self.epsilon_min, epsilon - self.epsilon_decay)
+                if self.total_step > self.start_reduce_epsilon:
+                    self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay)
                 
                 obs = next_obs
                 total_reward += reward
                 step += 1
-                total_step += 1
+                self.total_step += 1
 
             # end of episode logging
             self.total_rewards.append(total_reward)
             self.total_losses.append(total_loss)
+            self.total_profits.append(getattr(self.env, 'total_profit', 0))
             # episode return == total_reward, profit info in env.profits
-            print(f"Epoch {epoch+1:3d} | Epsilon {epsilon:.3f} | Steps {total_step:5d} | Return {total_reward:.4f} | Loss {total_loss:.4f} | Profit {getattr(env, 'total_profit', 0):.4f}")
-            print(self.env.render_confusion_matrix())
+            print(f"Epoch {epoch+1:3d} | Epsilon {self.epsilon:.3f} | Steps {self.total_step:5d} | Return {total_reward:.4f} | Loss {total_loss:.4f} | Profit {getattr(self.env, 'total_profit', 0):.4f}")
+            if hasattr(self.env, "render_confusion_matrix"):
+                self.env.render_confusion_matrix()
             
 
             # periodic summary every 5 episodes
@@ -823,6 +829,8 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
         total_profit = getattr(test_env, 'profits', 0)
 
         print(f"Test completed | Total Reward: {total_reward:.4f} | Total Profit: {total_profit:.4f}")
+        if hasattr(test_env, "render_confusion_matrix"):
+                test_env.render_confusion_matrix()
         return total_reward, total_profit, actions
 
 
@@ -853,4 +861,3 @@ class DDDQNTrainer_PrioritizedReplay_BiLSTM:
         plt.tight_layout()
         plt.show()
 
- 
