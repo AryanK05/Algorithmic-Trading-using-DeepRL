@@ -207,6 +207,9 @@ class DDDQNTrainer:
 
 
 class DDDQNTrainer_PrioritizedReplay:
+    '''
+    Note this traininer can currently only interface with the Day trading env due to increased render modes which this trainer requires
+    '''
     class QNetwork(nn.Module):
         def __init__(self, input_dim, hidden_dim, output_dim):
             super().__init__()
